@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>风控插件示例</title>
+    <script src="https://code.jquery.com/jquery-2.1.3.min.js"></script>
+    <script src="./bestvRiskAssess.js"></script>
+</head>
+<body>
+</body>
+<script>
+    bestvRiskAssess.init ()
+    bestvRiskAssess.check ({
+        id: 123,
+        success: function () {
+            console.log ("继续执行后续操作")
+        },
+        fail: function () {
+            console.log ("终止操作")
+        },
+        md: {
+            "CurrentDateTime": 1617273232,
+            "Schedule": {
+                beforeChange: {channelName: "中央一台"},
+                afterChange: {channelName: "中央一台高清"},
+                describe: "该操作用来修改频道名称"
+            }
+        }
+    })
+</script>
+</html>
