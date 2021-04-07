@@ -1,9 +1,11 @@
-##标题JS风险提示插件使用说明
-###配置选项
-
+标题JS风险提示插件使用说明
+==============
+配置选项
+----
 *  **logServiceAdd** 风控上报日志服务器地址，默认值为
 *  **serviceAdd** 风控信息服务器地址，默认值为
 *  **openRiskLog** 是否开启风控日志上报，默认true
+*  **onLineMode** 是否开启在线模式，默认true
 *  **riskData** 各风控点风控评估数据，该值支持本地配置或者从风控信息服务器获取，默认为null
 *  **reqRiskDataIf** 请求风险数据接口，默认值为xxxx
 *  **logReportIf** 日志上报接口，默认值为xxxx
@@ -17,17 +19,20 @@
 *  **titleColor** 提示框标题颜色，默认"#444"
 *  **timeout** 接口超时时间,单位毫秒，默认5000
 
-###事件
+事件
+----
 *  **success** 1、当风险评估为无风险时被触发2、当风险提示框弹出，用户点击确认执行按钮时被触发
 *  **fail**  当风险提示框弹出，用户点击取消按钮时被触发
 
-###方法
+方法
+----
 *  **check** 检查指定风险点是否存在风险，当检测结果为中风险或者高风险时，弹出确认执行提示框
 *  **init**  初始化风控插件，建议应用加载第一时间调用，用于网络加载riskData
 *  **config**  对配置选项的相关值进行修改
 *  **getRiskInfoById**  获取指定功能点风险信息
 
-###依赖
+依赖
+----
 该插件依赖jquery，调用时确保window.$可以调用，或者调用方法传入jquery，如：
 ```
 bestvRiskAssess.check({
@@ -51,21 +56,26 @@ bestvRiskAssess.config({
 ```
 
 
-###模块导入
-####CommonJs
+模块导入
+----
+CommonJs
+--------
 ```
 const bestvRiskAssess = require('./bestvRiskAssess.js')
 ```
-####es6 module
+es6 module
+--------
 ```
 import  bestvRiskAssess from './bestvRiskAssess'
 ```
-####全局变量模式
+全局变量模式
+--------
 ```
 <script src="./bestvRiskAssess.js" type="text/javascript"></script>
 bestvRiskAssess.check(...)
 ```
-###用法说明
+用法说明
+----
 ```
 /**
  * 初始化风控插件，应用加载的第一时间调用，用于插件从服务器获取各风控点风险数据信息集合
@@ -114,17 +124,21 @@ bestvRiskAssess.config({
 bestvRiskAssess.getRiskInfoById(id)
 ```
 
-###高级应用
-####插件离线应用
+高级应用
+----
+插件离线应用
+--------
 当网络不通时，插件初始化风险数据无法获取，并且数据上报服务器无法连接时，如果使用插件？
 ```
 bestvRiskAssess.config({
     riskData: ..,//本地配置风险数据，传给插件
     openRiskLog: false, //数据上报设置为false
+    onLineMode: false
     ...
 })
 ```
-####不同页面如何定制提示框样式
+不同页面如何定制提示框样式
+--------
 ```
 
 bestvRiskAssess.check({
