@@ -124,6 +124,12 @@ bestvRiskAssess.config({
 bestvRiskAssess.getRiskInfoById(id)
 ```
 
+链接
+----
+ - **jsFiddle:** https://jsfiddle.net/dongxiaoping/938nyzcw/2/ 基础用法示例。
+ 
+ - **jsFiddle:** https://jsfiddle.net/dongxiaoping/938nyzcw/2/ 离线用法示例。
+
 高级应用
 ----
 插件离线应用

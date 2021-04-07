@@ -12,6 +12,7 @@
         logServiceAdd: 'https://www.toplaygame.cn', //风控日志上报服务器地址
         serviceAdd: 'https://www.toplaygame.cn', //风险评估服务器地址
         openRiskLog: true, //是否开启风控日志上报
+        onLineMode: true, //是否开启在线模式，开启在线模式插件通过网络请求获取风控信息
         riskData: null, //风险评估数据，部分网络不通的项目可以使用改参数自己配置风险数据
         reqRiskDataIf: 'phpserver/public/index.php/race/room/get_config',//请求风险数据接口
         logReportIf: 'phpserver/public/index.php/race/room/get_config',//日志上报接口
@@ -32,11 +33,11 @@
             riskAssess.check (riskAssess.getCheckParam (options))
         },
         init: function () { //初始化插件
-            if (o.riskData !== null) {
+            if (riskAssess.getRiskData () !== null) {
                 console.log ("风险初始数据已存在")
                 return
             }
-            riskAssess.reqRiskData () //初始化风险数据
+            if (o.onLineMode) riskAssess.reqRiskData () //初始化风险数据
         },
         getRiskInfoById: function (id) { //获取指定功能点的风险信息
             return riskAssess.getRiskInfoById (id)
@@ -47,6 +48,13 @@
                 window.$ = options.jquery
             }
             defaultConfig = $.extend ({}, defaultConfig, options)
+            if (typeof options.riskData !== 'undefined') {
+                if (options.riskData instanceof Array) {
+                    riskAssess.setRiskData (options.riskData)
+                } else {
+                    defaultConfig.riskData = null
+                }
+            }
         }
     }, o = defaultConfig //实际执行配置参数
 
@@ -56,23 +64,25 @@
     }
 
     RiskAssess.prototype.check = function (checkParam) {
-        var riskInfo = this.getRiskInfoById (checkParam.id), grade = RiskGrade.High, tipWord = null
-        if (grade !== RiskGrade.Low) {
-            var dia = new Dia ()
-            var title = '风险提示框'
-            var functionName = '功能名称1'
-            var op = '操作人员2'
-            var riskNumber = 98.7
-            if (grade === RiskGrade.UnKnow) {
-                tipWord = "当前操作的风险等级未知，请谨慎操作！"
-            }
-            dia.confirm (title, functionName, op, grade, checkParam.md, riskNumber, tipWord, checkParam.success, checkParam.fail)
+        var riskInfo = this.getRiskInfoById (checkParam.id), grade = riskInfo.riskLevel, tipWord = null
+        if (grade === RiskGrade.Low) {
+            checkParam.success ()
+            return
         }
+        var dia = new Dia ()
+        var title = '风险提示框'
+        var functionName = riskInfo.functionKey
+        var op = checkParam.opId
+        var riskCoefficient = riskInfo.riskCoefficient
+        if (grade === RiskGrade.UnKnow) {
+            tipWord = "当前操作的风险等级未知，请谨慎操作！"
+        }
+        dia.confirm (title, functionName, op, grade, checkParam.md, riskCoefficient, tipWord, checkParam.success, checkParam.fail)
     }
 
     RiskAssess.prototype.getRiskInfoById = function (id) {
-        if (o.riskData && typeof o.riskData[id] !== "undefined") {
-            return o.riskData[id]
+        if (this.getRiskData () && typeof this.getRiskData ()[id] !== "undefined") {
+            return this.getRiskData ()[id]
         }
         return null
     }
@@ -87,12 +97,13 @@
         }
         var id = (options && options.id) ? options.id : null
         var md = (options && options.md) ? options.md : {}
+        var opId = (options && options.opId) ? options.opId : ""
         try {
             md = this.getFormatJsonStrFromString (JSON.stringify (md))
         } catch (e) {
             md = ""
         }
-        return {id: id, md: md, success: success, fail: fail}
+        return {id: id, md: md, opId: opId, success: success, fail: fail}
     }
 
     //根据操作id获取风险等级信息
@@ -127,7 +138,15 @@
 
     //初始化风控信息
     RiskAssess.prototype.setRiskData = function (data) {
-        defaultConfig.riskData = data
+        var list = {}
+        data.forEach (function (element) {
+            list[element.functionKey] = element
+        });
+        defaultConfig.riskData = list
+    }
+
+    RiskAssess.prototype.getRiskData = function () {
+        return defaultConfig.riskData
     }
 
     RiskAssess.prototype.getFormatJsonStrFromString = function (jsonStr) { //UI展示格式化JSON数据
