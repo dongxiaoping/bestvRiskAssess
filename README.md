@@ -5,7 +5,8 @@
 *  **logServiceAdd** 风控上报日志服务器地址，默认值为
 *  **serviceAdd** 风控信息服务器地址，默认值为
 *  **openRiskLog** 是否开启风控日志上报，默认true
-*  **onLineMode** 是否开启在线模式，默认true
+*  **isClose** 是否关闭风险评估插件,默认打开false。如果关闭所有风险检查都放通，同时进行日志上报
+*  **onLineMode** 是否开启在线模式，默认true。非在线模式需要设置riskData
 *  **riskData** 各风控点风控评估数据，该值支持本地配置或者从风控信息服务器获取，默认为null
 *  **reqRiskDataIf** 请求风险数据接口，默认值为xxxx
 *  **logReportIf** 日志上报接口，默认值为xxxx
@@ -17,6 +18,8 @@
 *  **okButtonColor** 确认按钮颜色，默认"#168bbb"
 *  **cancelButtonColor** 取消按钮颜色，默认"gray"
 *  **titleColor** 提示框标题颜色，默认"#444"
+*  **unKnowTip** 未知风险提示语,默认"当前操作的风险等级未知，请谨慎操作！"
+*  **diaTitle** 风险提示框标题,默认"风险提示框"
 *  **timeout** 接口超时时间,单位毫秒，默认5000
 
 事件
@@ -87,6 +90,7 @@ bestvRiskAssess.init()
 /**
  * 功能点风控检查，无风险时回调success函数，有风险时弹出风险提示框.
  * @id 必填，功能点id，每个功能点都有一个唯一id
+ * @opId 必填，操作员ID
  * @success 必填，无风险或者风险提示框OK按钮点击回调
  * @md 选填，当前功能点操作数据变动描述，是一个json对象，格式为{beforeChange："执行前的变动数据信息"，
  * afterChange："执行后的变动数据信息"，describe："文字说明"}。该数据会显示在风险提示框的提示信息中，提供给操作者做参考
@@ -128,7 +132,7 @@ bestvRiskAssess.getRiskInfoById(id)
 ----
  - **jsFiddle:** https://jsfiddle.net/dongxiaoping/938nyzcw/2/ 基础用法示例。
  
- - **jsFiddle:** https://jsfiddle.net/dongxiaoping/938nyzcw/2/ 离线用法示例。
+ - **jsFiddle:** https://jsfiddle.net/dongxiaoping/mjyazk6e/7/ 离线用法示例。
 
 高级应用
 ----

@@ -12,6 +12,7 @@
         logServiceAdd: 'https://www.toplaygame.cn', //风控日志上报服务器地址
         serviceAdd: 'https://www.toplaygame.cn', //风险评估服务器地址
         openRiskLog: true, //是否开启风控日志上报
+        isClose: false, //是否关闭风险评估插件,默认打开false。如果关闭所有风险检查都放通，同时进行日志上报
         onLineMode: true, //是否开启在线模式，开启在线模式插件通过网络请求获取风控信息
         riskData: null, //风险评估数据，部分网络不通的项目可以使用改参数自己配置风险数据
         reqRiskDataIf: 'phpserver/public/index.php/race/room/get_config',//请求风险数据接口
@@ -24,6 +25,9 @@
         okButtonColor: '#168bbb', //确认按钮颜色
         cancelButtonColor: 'gray', //取消按钮颜色
         titleColor: '#444', //提示框标题颜色
+        unKnowTip: '当前操作的风险等级未知，请谨慎操作！', //未知风险提示语
+        unCatchTip: '异常请求不到风险数据，请谨慎操作！',
+        diaTitle: '风险提示框', //风险提示框标题
         timeout: 5000 //接口超时时间
     }
         , plugin = {//BEGIN 对外接口
@@ -64,27 +68,95 @@
     }
 
     RiskAssess.prototype.check = function (checkParam) {
-        var riskInfo = this.getRiskInfoById (checkParam.id), grade = riskInfo.riskLevel, tipWord = null
-        if (grade === RiskGrade.Low) {
-            checkParam.success ()
+        var riskInfo = this.getRiskInfoById (checkParam.id), grade
+        if (riskInfo === RiskGrade.UnCatch || riskInfo === RiskGrade.UnKnow) {
+            grade = riskInfo
+        } else {
+            grade = riskInfo.riskLevel
+        }
+        if (o.isClose) {
+            this.closeRiskAction ()
             return
         }
-        var dia = new Dia ()
-        var title = '风险提示框'
-        var functionName = riskInfo.functionKey
-        var op = checkParam.opId
-        var riskCoefficient = riskInfo.riskCoefficient
-        if (grade === RiskGrade.UnKnow) {
-            tipWord = "当前操作的风险等级未知，请谨慎操作！"
+        switch (grade) {
+            case RiskGrade.Low:
+                this.noRiskAction (checkParam)
+                break
+            case RiskGrade.Middle:
+            case RiskGrade.High:
+                this.hasRiskAction (riskInfo, checkParam)
+                break
+            case RiskGrade.UnKnow: //风险信息未知
+                this.unKnowRiskAction (riskInfo, checkParam)
+                break
+            case RiskGrade.UnCatch: //网络异常请求不到风险信息
+                this.unCatchRiskAction (riskInfo, checkParam)
+                break
+            default:
+                console.log ("风险等级判断异常！")
         }
+        this.defaultAction ()
+    }
+
+    //有风险行为
+    RiskAssess.prototype.hasRiskAction = function (riskInfo, checkParam) {
+        console.log ("中高风险")
+        var tipWord = null, dia = new Dia (), title = o.diaTitle,
+            functionName = riskInfo.functionKey, op = checkParam.opId,
+            riskCoefficient = riskInfo.riskCoefficient, grade = riskInfo.riskLevel
         dia.confirm (title, functionName, op, grade, checkParam.md, riskCoefficient, tipWord, checkParam.success, checkParam.fail)
     }
 
+    //无风险行为
+    RiskAssess.prototype.noRiskAction = function (checkParam) {
+        console.log ("无风险")
+        checkParam.success ()
+    }
+
+    //关闭插件检查行为
+    RiskAssess.prototype.closeRiskAction = function () {
+        console.log ("风险插件关闭")
+        console.log ("风险插件被设置为放通！")
+    }
+
+    //未知风险行为
+    RiskAssess.prototype.unKnowRiskAction = function (riskInfo, checkParam) {
+        console.log ("未知风险")
+        var tipWord = o.unKnowTip, dia = new Dia (), title = o.diaTitle,
+            functionName = riskInfo.functionKey, op = checkParam.opId,
+            riskCoefficient = riskInfo.riskCoefficient, grade = riskInfo.riskLevel
+        dia.confirm (title, functionName, op, grade, checkParam.md, riskCoefficient, tipWord, checkParam.success, checkParam.fail)
+    }
+
+    //网络异常请求不到风险信息的场景
+    RiskAssess.prototype.unCatchRiskAction = function (riskInfo, checkParam) {
+        console.log ("异常请求不到风险信息")
+        var tipWord = o.unCatchTip, dia = new Dia (), title = o.diaTitle,
+            functionName = riskInfo.functionKey, op = checkParam.opId,
+            riskCoefficient = riskInfo.riskCoefficient, grade = riskInfo.riskLevel
+        dia.confirm (title, functionName, op, grade, checkParam.md, riskCoefficient, tipWord, checkParam.success, checkParam.fail)
+    }
+
+
+    //所有风险默认执行的行为
+    RiskAssess.prototype.defaultAction = function () {
+        console.log ("所有风险默认执行的行为")
+    }
+
     RiskAssess.prototype.getRiskInfoById = function (id) {
-        if (this.getRiskData () && typeof this.getRiskData ()[id] !== "undefined") {
-            return this.getRiskData ()[id]
+        if (!this.getRiskData ()) {
+            return RiskGrade.UnCatch
         }
-        return null
+        if (typeof this.getRiskData ()[id] !== "undefined") {
+            var riskInfo = this.getRiskData ()[id]
+            if (riskInfo.riskLevel !== RiskGrade.Low && riskInfo.riskLevel !== RiskGrade.Middle
+                && riskInfo.riskLevel !== RiskGrade.High) {
+                console.log ("错误的风险值")
+                return RiskGrade.UnKnow
+            }
+            return riskInfo
+        }
+        return RiskGrade.UnKnow
     }
 
     /*从用户传参中获取风险检查参数*/
