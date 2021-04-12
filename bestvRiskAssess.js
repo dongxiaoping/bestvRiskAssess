@@ -9,15 +9,15 @@
         UnKnow: 4//等级信息缺失
     }
         , defaultConfig = {//默认配置文件
-        logServiceAdd: 'https://www.toplaygame.cn', //风控日志上报服务器地址
-        serviceAdd: 'https://www.toplaygame.cn', //风险评估服务器地址
+        logServiceAdd: 'http://10.215.29.151:8202', //风控日志上报服务器地址
+        serviceAdd: 'http://10.215.29.151:8202', //风险评估服务器地址
         openRiskLog: true, //是否开启风控日志上报
         isClose: false, //是否关闭风险评估插件,默认打开false。如果关闭所有风险检查都放通，同时进行日志上报
         onLineMode: true, //是否开启在线模式，开启在线模式插件通过网络请求获取风控信息
         riskData: null, //风险评估数据，部分网络不通的项目可以使用改参数自己配置风险数据
-        reqRiskDataIf: 'phpserver/public/index.php/race/room/get_config',//请求风险数据接口
-        logReportIf: 'phpserver/public/index.php/race/room/get_config',//日志上报接口
-        module: null, //应用所属模块
+        reqRiskDataIf: 'rcms/api/check/search_risk',//请求风险数据接口
+        logReportIf: 'rcms/api/check/add_auditLog',//日志上报接口
+        module: "", //应用所属模块
         bgColor: '#009BFE', //风险提示框主题背景色
         riskColor: 'blue', //风险字体颜色
         riskMiddleBg: 'yellow', //中风险提示背景色
@@ -37,6 +37,7 @@
             riskAssess.check (riskAssess.getCheckParam (options))
         },
         init: function () { //初始化插件
+            o = defaultConfig
             if (riskAssess.getRiskData () !== null) {
                 console.log ("风险初始数据已存在")
                 return
@@ -68,19 +69,14 @@
     }
 
     RiskAssess.prototype.check = function (checkParam) {
-        var riskInfo = this.getRiskInfoById (checkParam.id), grade
-        if (riskInfo === RiskGrade.UnCatch || riskInfo === RiskGrade.UnKnow) {
-            grade = riskInfo
-        } else {
-            grade = riskInfo.riskLevel
-        }
         if (o.isClose) {
-            this.closeRiskAction ()
+            this.closeRiskAction (checkParam, riskInfo)
             return
         }
-        switch (grade) {
+        var riskInfo = this.getRiskInfoById (checkParam.id)
+        switch (riskInfo.riskLevel) {
             case RiskGrade.Low:
-                this.noRiskAction (checkParam)
+                this.noRiskAction (checkParam, riskInfo)
                 break
             case RiskGrade.Middle:
             case RiskGrade.High:
@@ -101,40 +97,52 @@
     //有风险行为
     RiskAssess.prototype.hasRiskAction = function (riskInfo, checkParam) {
         console.log ("中高风险")
-        var tipWord = null, dia = new Dia (), title = o.diaTitle,
-            functionName = riskInfo.functionKey, op = checkParam.opId,
-            riskCoefficient = riskInfo.riskCoefficient, grade = riskInfo.riskLevel
-        dia.confirm (title, functionName, op, grade, checkParam.md, riskCoefficient, tipWord, checkParam.success, checkParam.fail)
+        var dia = new Dia ()
+        var tipWord = ""
+        dia.confirm (riskInfo, checkParam, tipWord)
     }
 
     //无风险行为
-    RiskAssess.prototype.noRiskAction = function (checkParam) {
+    RiskAssess.prototype.noRiskAction = function (checkParam, riskInfo) {
         console.log ("无风险")
         checkParam.success ()
+        var logParam = {
+            changeData: checkParam.md,
+            functionKey: riskInfo.functionKey,
+            operator: checkParam.opId,
+            riskCoefficient: riskInfo.riskCoefficient
+        }
+        this.logReport (logParam)
     }
 
     //关闭插件检查行为
-    RiskAssess.prototype.closeRiskAction = function () {
+    RiskAssess.prototype.closeRiskAction = function (checkParam, riskInfo) {
         console.log ("风险插件关闭")
         console.log ("风险插件被设置为放通！")
+        checkParam.success ()
+        var logParam = {
+            changeData: checkParam.md,
+            functionKey: riskInfo.functionKey,
+            operator: checkParam.opId,
+            riskCoefficient: riskInfo.riskCoefficient
+        }
+        this.logReport (logParam)
     }
 
     //未知风险行为
     RiskAssess.prototype.unKnowRiskAction = function (riskInfo, checkParam) {
         console.log ("未知风险")
-        var tipWord = o.unKnowTip, dia = new Dia (), title = o.diaTitle,
-            functionName = riskInfo.functionKey, op = checkParam.opId,
-            riskCoefficient = riskInfo.riskCoefficient, grade = riskInfo.riskLevel
-        dia.confirm (title, functionName, op, grade, checkParam.md, riskCoefficient, tipWord, checkParam.success, checkParam.fail)
+        var tipWord = o.unKnowTip
+        var dia = new Dia ()
+        dia.confirm (riskInfo, checkParam, tipWord)
     }
 
     //网络异常请求不到风险信息的场景
     RiskAssess.prototype.unCatchRiskAction = function (riskInfo, checkParam) {
         console.log ("异常请求不到风险信息")
-        var tipWord = o.unCatchTip, dia = new Dia (), title = o.diaTitle,
-            functionName = riskInfo.functionKey, op = checkParam.opId,
-            riskCoefficient = riskInfo.riskCoefficient, grade = riskInfo.riskLevel
-        dia.confirm (title, functionName, op, grade, checkParam.md, riskCoefficient, tipWord, checkParam.success, checkParam.fail)
+        var tipWord = o.unCatchTip
+        var dia = new Dia ()
+        dia.confirm (riskInfo, checkParam, tipWord)
     }
 
 
@@ -145,18 +153,18 @@
 
     RiskAssess.prototype.getRiskInfoById = function (id) {
         if (!this.getRiskData ()) {
-            return RiskGrade.UnCatch
+            return {riskLevel: RiskGrade.UnCatch}
         }
         if (typeof this.getRiskData ()[id] !== "undefined") {
             var riskInfo = this.getRiskData ()[id]
             if (riskInfo.riskLevel !== RiskGrade.Low && riskInfo.riskLevel !== RiskGrade.Middle
                 && riskInfo.riskLevel !== RiskGrade.High) {
                 console.log ("错误的风险值")
-                return RiskGrade.UnKnow
+                return {riskLevel: RiskGrade.UnKnow}
             }
             return riskInfo
         }
-        return RiskGrade.UnKnow
+        return {riskLevel: RiskGrade.UnKnow}
     }
 
     /*从用户传参中获取风险检查参数*/
@@ -180,22 +188,41 @@
 
     //根据操作id获取风险等级信息
     RiskAssess.prototype.reqRiskData = function (opId) {
-        var that = this, ifAddress = o.serviceAdd + "/" + o.reqRiskDataIf
+        var that = this
         $.ajax ({
-            url: ifAddress, type: "GET", timeout: o.timeout, success: function (result) {
-                that.setRiskData (result)
-                console.log ("初始化风险数据：" + JSON.stringify (result))
-            }, error: function (xhr, status, error) {
-                console.log ("请求失败")
+            url: o.serviceAdd + "/" + o.reqRiskDataIf,
+            type: "post",
+            timeout: o.timeout,
+            contentType: "application/json;charset=UTF-8",
+            dataType: "json",
+            data: JSON.stringify ({data: {"module": o.module}}),
+            success: function (result) {
+                console.log (result)
+                that.setRiskData (result.data.items)
+            },
+            error: function (xhr, status, error) {
+                console.log (o.reqRiskDataIf + "请求失败")
             }
         });
     }
 
     //日志上报接口
-    RiskAssess.prototype.logReport = function (opId) {
-        var that = this, ifAddress = o.logServiceAdd + "/" + o.logReportIf
+    RiskAssess.prototype.logReport = function (logParam) {
+        if (!o.openRiskLog) {
+            console.log ('上报开关已关闭')
+            return
+        }
+        var that = this
         $.ajax ({
-            url: ifAddress, type: "POST", timeout: o.timeout, success: function (result) {
+            url: o.logServiceAdd + "/" + o.logReportIf,
+            type: "post",
+            timeout: o.timeout,
+            contentType: "application/json;charset=UTF-8",
+            dataType: "json",
+            data: JSON.stringify ({
+                data: logParam
+            }),
+            success: function (result) {
                 console.log ("上报成功")
             }, error: function (xhr, status, error) {
                 console.log ("上报失败")
@@ -274,29 +301,27 @@
         this.btnOk (); //alert只是弹出消息，因此没必要用到回调函数callback
         this.btnNo ();
     }
-    /*@title 标题
-     *@functionName 功能名称
-     *@op 操作人员
-     *@grade 风险等级
-     *@md 改动json信息
-     *@riskNumber 风险值
-     *@success 确认回调
-     *@fail 取消回调
-    */
-    Dia.prototype.confirm = function (title, functionName, op, grade, md, riskNumber, tipWord, success, fail) {
+
+    Dia.prototype.confirm = function (riskInfo, checkParam, tipWord) {
         var params = {
             type: "confirm",
-            title: title,
-            functionName: functionName,
-            op: op,
-            grade: grade,
-            riskNumber: riskNumber,
+            title: o.diaTitle,
+            functionName: riskInfo.functionName,
+            op: checkParam.opId,
+            grade: riskInfo.riskLevel,
+            riskNumber: riskInfo.riskCoefficient,
             tipWord: tipWord,
-            md: md
+            md: checkParam.md
         }
         this.GenerateHtml (params);
-        this.btnOk (success);
-        this.btnNo (fail);
+        var logParam = {
+            changeData: checkParam.md,
+            functionKey: riskInfo.functionKey,
+            operator: checkParam.opId,
+            riskCoefficient: riskInfo.riskCoefficient
+        }
+        this.btnOk (checkParam.success, logParam);
+        this.btnNo (checkParam.fail);
     }
     //生成Html
     Dia.prototype.GenerateHtml = function (params) {
@@ -437,11 +462,12 @@
         });
     }
 
-    Dia.prototype.btnOk = function (callback) {
+    Dia.prototype.btnOk = function (callback, logParam) {
         $ ("#bestv_riskassess_btn_ok").click (function () {
             $ ("#bestv_riskassess_box,#bestv_riskassess_con").remove ();
             if (typeof (callback) == 'function') {
                 callback ();
+                riskAssess.logReport (logParam)
             }
         });
     }

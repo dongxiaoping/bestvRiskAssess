@@ -11,31 +11,40 @@
 </body>
 <script>
     bestvRiskAssess.config ({
-            riskData: [{functionKey: 34, riskCoefficient: 87.5, riskLevel: 0},
-                {functionKey: 35, riskCoefficient: 23, riskLevel: 3},
+            module:'bims',
+/*            riskData: [{functionKey: 34, riskCoefficient: 87.5, riskLevel: 0},
+                {functionKey: 35, riskCoefficient: 23, riskLevel: 1},
                 {functionKey: 36, riskCoefficient: 45, riskLevel: 2}
-            ],
+            ],*/
            // isClose:true,
-            onLineMode: false
+            onLineMode: true
         }
     )
-    bestvRiskAssess.check ({
-        id: 353,
-        opId: 'zs',
-        success: function () {
-            console.log ("继续执行后续操作")
-        },
-        fail: function () {
-            console.log ("终止操作")
-        },
-        md: {
-            "CurrentDateTime": 1617273232,
-            "Schedule": {
-                beforeChange: {channelName: "中央一台"},
-                afterChange: {channelName: "中央一台高清"},
-                describe: "该操作用来修改频道名称"
+    bestvRiskAssess.init()
+
+    setTimeout(function () {
+        test()
+    },3000)
+    function test(){
+        bestvRiskAssess.check ({
+            id: "OTT.BIMS.ORDERUNSUBCRIBEd",
+            opId: 'zs',
+            success: function () {
+                console.log ("继续执行后续操作")
+            },
+            fail: function () {
+                console.log ("终止操作")
+            },
+            md: {
+                "CurrentDateTime": 1617273232,
+                "Schedule": {
+                    beforeChange: {channelName: "中央一台"},
+                    afterChange: {channelName: "中央一台高清"},
+                    describe: "该操作用来修改频道名称"
+                }
             }
-        }
-    })
+        })
+    }
+
 </script>
 </html>
